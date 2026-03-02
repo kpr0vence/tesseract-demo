@@ -48,13 +48,6 @@ async def ocr_endpoint(request: Request, file: UploadFile = File(...)) -> dict[s
 
     try:
         result = ocr_image(img)
-        annotated = draw_word_boxes(img, result["words"])
-        filename = f"{uuid.uuid4().hex}.png"
-        out_path = ANNOTATED_DIR / filename
-        annotated.save(out_path, format="PNG")
-
-        url_path = f"/static/annotated/{filename}"
-        result["annotated_image_url"] = str(request.base_url).rstrip("/") + url_path
         return result
     except Exception as e:  # pragma: no cover
         # Common case here is "tesseract is not installed or it's not in your PATH".
