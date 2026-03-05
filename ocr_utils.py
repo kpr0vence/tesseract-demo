@@ -6,6 +6,15 @@ from pytesseract import Output
 
 pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
 
+import subprocess
+try:
+    subprocess.run([pytesseract.pytesseract.tesseract_cmd, "--version"], check=True, capture_output=True)
+except (FileNotFoundError, subprocess.CalledProcessError) as e:
+    raise RuntimeError(
+        f"Tesseract not found or not working at '{pytesseract.pytesseract.tesseract_cmd}'. "
+        "Make sure it is installed and in your PATH. Original error: {e}"
+    )
+
 TESS_CONFIG = "--oem 3 --psm 4"  # fast OCR config
 
 def ocr_image(image: Image.Image, *, lowercase_lines: bool = True) -> dict[str, Any]:
