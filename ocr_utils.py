@@ -5,6 +5,8 @@ import pytesseract
 from PIL import Image, ImageDraw
 from pytesseract import Output
 
+TESS_CONFIG = "--oem 3 --psm 4" # improves tesseract speed
+
 
 def ocr_image(image: Image.Image, *, lowercase_lines: bool = True) -> dict[str, Any]:
     """
@@ -17,16 +19,24 @@ def ocr_image(image: Image.Image, *, lowercase_lines: bool = True) -> dict[str, 
     Notes:
     - Tesseract confidences are per-word, typically 0-100; sometimes "-1" for non-words.
     """
-    text = pytesseract.image_to_string(image)
+    text = pytesseract.image_to_string(image, config=TESS_CONFIG)
 
     lines = text.splitlines()
     lines = [line.strip() for line in lines if line.strip()]
+
     if lowercase_lines:
         lines = [line.lower() for line in lines]
 
-    data = pytesseract.image_to_data(image, output_type=Output.DICT)
+    # Get word-level data
+    data = pytesseract.image_to_data(
+        image,
+        output_type=Output.DICT,
+        config=TESS_CONFIG,
+    )
+
     words: list[dict[str, Any]] = []
     confs: list[float] = []
+
     n = len(data.get("text", []))
 
     for i in range(n):
@@ -34,9 +44,8 @@ def ocr_image(image: Image.Image, *, lowercase_lines: bool = True) -> dict[str, 
         if not w:
             continue
 
-        raw_conf = data["conf"][i]
         try:
-            conf = float(raw_conf)
+            conf = float(data["conf"][i])
         except (TypeError, ValueError):
             conf = -1.0
 
@@ -64,37 +73,3 @@ def ocr_image(image: Image.Image, *, lowercase_lines: bool = True) -> dict[str, 
         "mean_confidence": mean_conf,
         "words": words,
     }
-
-
-def draw_word_boxes(
-    image: Image.Image,
-    words: list[dict[str, Any]],
-    *,
-    outline: str = "red",
-    width: int = 2,
-) -> Image.Image:
-    """
-    Return a NEW image with rectangles drawn for each word bbox.
-
-    Expects `words` items shaped like the output from `ocr_image()`:
-      {"text": str, "conf": float, "bbox": {"left": int, "top": int, "width": int, "height": int}}
-    """
-    # Ensure we can draw colored outlines even if the source is grayscale.
-    out = image.convert("RGB").copy()
-    draw = ImageDraw.Draw(out)
-
-    for w in words:
-        bbox = (w or {}).get("bbox") or {}
-        left = int(bbox.get("left", 0))
-        top = int(bbox.get("top", 0))
-        bw = int(bbox.get("width", 0))
-        bh = int(bbox.get("height", 0))
-        if bw <= 0 or bh <= 0:
-            continue
-
-        right = left + bw
-        bottom = top + bh
-        draw.rectangle([left, top, right, bottom], outline=outline, width=width)
-
-    return out
-

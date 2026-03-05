@@ -4,12 +4,13 @@ import uuid
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from preprocess import preprocess_for_ocr
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
-from ocr_utils import draw_word_boxes, ocr_image
+from ocr_utils import ocr_image
 
 app = FastAPI(title="tesseract-demo", version="0.1.0")
 
@@ -43,6 +44,9 @@ async def ocr_endpoint(request: Request, file: UploadFile = File(...)) -> dict[s
     try:
         img = Image.open(BytesIO(raw))
         img.load()
+        img = img.convert("RGB")    # tesseract works better for rbg than (potential CMYK)
+
+        img = preprocess_for_ocr(img)   # modify image for better processing
     except UnidentifiedImageError:
         raise HTTPException(status_code=415, detail="unsupported/invalid image")
 
