@@ -4,6 +4,8 @@ import pytesseract
 from PIL import Image, ImageDraw
 from pytesseract import Output
 
+pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+
 TESS_CONFIG = "--oem 3 --psm 4"  # fast OCR config
 
 def ocr_image(image: Image.Image, *, lowercase_lines: bool = True) -> dict[str, Any]:
