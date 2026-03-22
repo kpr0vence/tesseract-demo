@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, Request
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from PIL import Image, UnidentifiedImageError
+from pillow_heif import register_heif_opener, read_heif
 from io import BytesIO
 
 from ocr_utils import ocr_image
@@ -17,9 +18,27 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 def health():
     return {"status": "ok"}
 
+register_heif_opener()      # All I need to do should just be to register 
+# the opener so the rest of the code can just work as normal
+
 @app.post("/ocr")
 async def ocr_endpoint(request: Request, file: UploadFile = File(...)):
-    if not file.content_type or not file.content_type.startswith("image/"):
+    print(file.filename)
+    if (not file.content_type or not file.content_type.startswith("image/") and not ('heic' in file.filename.lower())):
+        # if ('heic' in file.filename.lower()):
+        #     print("HEIC DETECTED")
+        #     heif_file = read_heif(file.filename)
+        #     image = Image.frombytes(
+        #         heif_file.mode,
+        #         heif_file.size,
+        #         heif_file.data,
+        #         "raw",
+        #     )
+
+        #     image.save("./picture_name.png", format("png"))
+        #     print(image)
+
+
         raise HTTPException(status_code=415, detail="file must be an image upload")
     
     raw = await file.read()
@@ -28,12 +47,24 @@ async def ocr_endpoint(request: Request, file: UploadFile = File(...)):
 
     try:
         img = Image.open(BytesIO(raw))
+        if ('heic' in file.filename.lower()):
+            print("HEIC DETECTED")
+            heif_file = read_heif(file.filename)
+            img = Image.frombytes(
+                heif_file.mode,
+                heif_file.size,
+                heif_file.data,
+                "raw",
+            )
+
+            img.save("./picture_name.png", format("png"))
         img.load()
     except UnidentifiedImageError:
         raise HTTPException(status_code=415, detail="unsupported/invalid image")
     except Exception as e:
         print("[ocr] failed to open image:", e)
         raise HTTPException(status_code=500, detail=f"failed to open image: {e}")
+     
 
     try:
         result = ocr_image(img)

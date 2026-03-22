@@ -13,3 +13,11 @@ def preprocess_for_ocr(pil_img: Image.Image) -> Image.Image:
     
 
     return Image.fromarray(gray)
+
+
+# Use PIL to convert any image format to any other image
+# Might be a good idea to still limit the file formats (on Mr. Fridge)
+'''
+Install pillow-heif
+Real easy process just
+'''
